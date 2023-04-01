@@ -45,7 +45,7 @@ def main():
                         type = str,
                         default = None,
                         help = 'Output file path')
-    
+
     parser.add_argument('--few_shot_num',
                         type = int,
                         default = 5,
@@ -73,7 +73,7 @@ def main():
     dev_file_path = args.dev_file_path
     train_examples, dev_examples = load_intent_datasets(train_file_path, dev_file_path, args.do_lower_case)
 
-    sampled_tasks = [sample(N, train_examples) for i in range(T)]
+    sampled_tasks = [sample(N, train_examples) for _ in range(T)]
 
     if args.oos_dev_file_path is not None:
         oos_dev_examples = load_intent_examples(args.oos_dev_file_path, args.do_lower_case)
@@ -81,32 +81,27 @@ def main():
         oos_dev_examples = []
 
     if args.output_dir is not None:
-        folder_name = '{}/{}-shot-TF-IDF/'.format(args.output_dir, N)
+        folder_name = f'{args.output_dir}/{N}-shot-TF-IDF/'
 
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
-        file_name = 'trials_{}'.format(args.num_trials)
-        file_name = '{}__oos_threshold'.format(file_name)
-
-        if args.do_final_test:
-            file_name = file_name + '_TEST.txt'
-        else:
-            file_name = file_name + '.txt'
-
+        file_name = f'trials_{args.num_trials}'
+        file_name = f'{file_name}__oos_threshold' + (
+            '_TEST.txt' if args.do_final_test else '.txt'
+        )
         f = open(folder_name+file_name, 'w')
     else:
         f = None
-        
+
     for j in range(T):
         example_sentences = []
         for t in sampled_tasks[j]:
-            for e in t['examples']:
-                example_sentences.append(e)
+            example_sentences.extend(iter(t['examples']))
         model = TfidfKnn(example_sentences)
         intent_predictor = TfidfKnnIntentPredictor(model,
                                                    sampled_tasks[j])
-            
+
         in_domain_preds = []
         oos_preds = []
 
@@ -127,7 +122,7 @@ def main():
 
         if f is not None:
             for i in range(len(in_acc)):
-                f.write('{},{},{},{} '.format(in_acc[i], oos_recall[i], oos_prec[i], oos_f1[i]))
+                f.write(f'{in_acc[i]},{oos_recall[i]},{oos_prec[i]},{oos_f1[i]} ')
             f.write('\n')
 
     if f is not None:

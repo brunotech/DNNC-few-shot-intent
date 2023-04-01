@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--no_cuda",
                         action='store_true',
                         help="Whether not to use CUDA when available")
-    
+
     # Special params
     parser.add_argument('--train_file_path',
                         type = str,
@@ -70,7 +70,7 @@ def main():
                         type=str,
                         default=None,
                         help='path to save the model checkpoints')
-    
+
     parser.add_argument('--dnnc_path',
                         type = str,
                         required = True,
@@ -96,7 +96,7 @@ def main():
     parser.add_argument("--do_final_test",
                         action='store_true',
                         help="do_final_test the model")
-    
+
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -108,28 +108,26 @@ def main():
     dev_file_path = args.dev_file_path
     train_examples, dev_examples = load_intent_datasets(train_file_path, dev_file_path, args.do_lower_case)
 
-    sampled_tasks = [sample(N, train_examples) for i in range(T)]
+    sampled_tasks = [sample(N, train_examples) for _ in range(T)]
 
     if args.dev_file_path is not None:
         dev_examples = load_intent_examples(args.dev_file_path, args.do_lower_case)
     else:
         dev_examples = []
-        
+
     if args.oos_dev_file_path is not None:
         oos_dev_examples = load_intent_examples(args.oos_dev_file_path, args.do_lower_case)
     else:
         oos_dev_examples = []
 
     if args.output_dir is not None:
-        folder_name = '{}/{}-shot-{}_Joint---Top-{}/'.format(args.output_dir, N, args.bert_model, args.topk)
+        folder_name = f'{args.output_dir}/{N}-shot-{args.bert_model}_Joint---Top-{args.topk}/'
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
-        file_name = '{}-shot-{}_Joint_fine_tuned_model---Top-{}'.format(N, args.bert_model, args.topk)
-        if args.do_final_test:
-            file_name = file_name + '_TEST.txt'
-        else:
-            file_name = file_name + '.txt'
-
+        file_name = (
+            f'{N}-shot-{args.bert_model}_Joint_fine_tuned_model---Top-{args.topk}'
+            + ('_TEST.txt' if args.do_final_test else '.txt')
+        )
         f = open(folder_name + file_name, 'w')
     else:
         f = None
@@ -139,12 +137,12 @@ def main():
 
     for j in range(T):
         trial_stats_preds = defaultdict(list)
-        
-        save_model_path_dnnc = '{}_{}'.format(args.dnnc_path + args.save_model_path, j + 1)
+
+        save_model_path_dnnc = f'{args.dnnc_path + args.save_model_path}_{j + 1}'
         assert os.path.exists(save_model_path_dnnc)
 
         if args.emb_knn_path is not None:
-            save_model_path_emb_knn = '{}_{}'.format(args.emb_knn_path + args.save_model_path, j + 1)
+            save_model_path_emb_knn = f'{args.emb_knn_path + args.save_model_path}_{j + 1}'
             use_tfidf = False
             assert os.path.exists(save_model_path_emb_knn)
         else:
@@ -175,12 +173,13 @@ def main():
                 if not trial_stats_preds[e.label]:
                     trial_stats_preds[e.label] = []
 
-                single_pred = {}
-                single_pred['gold_example'] = e.text
-                single_pred['match_example'] = matched_example
-                single_pred['gold_label'] = e.label
-                single_pred['pred_label'] = pred
-                single_pred['conf'] = conf
+                single_pred = {
+                    'gold_example': e.text,
+                    'match_example': matched_example,
+                    'gold_label': e.label,
+                    'pred_label': pred,
+                    'conf': conf,
+                }
                 trial_stats_preds[e.label].append(single_pred)
 
         for e in tqdm(oos_dev_examples, desc = 'OOS examples'):
@@ -209,7 +208,7 @@ def main():
         oos_f1 = calc_oos_f1(oos_recall, oos_prec)
 
         print_results(THRESHOLDS, in_acc, oos_recall, oos_prec, oos_f1)
-            
+
         if f is not None:
             for i in range(len(in_acc)):
                 f.write('{},{},{},{} '.format(in_acc[i], oos_recall[i], oos_prec[i], oos_f1[i]))

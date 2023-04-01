@@ -32,10 +32,8 @@ class DnncIntentPredictor(IntentPredictor):
 
         nli_input = []
         for t in self.tasks:
-            for e in t['examples']:
-                nli_input.append((input, e))
-
-        assert len(nli_input) > 0
+            nli_input.extend((input, e) for e in t['examples'])
+        assert nli_input
 
         results = self.model.predict(nli_input)
         maxScore, maxIndex = results[1][:, 0].max(dim = 0)
@@ -70,13 +68,12 @@ class EmbKnnIntentPredictor(IntentPredictor):
         if self.model.cached_embeddings is None:
             example_sentences = []
             for t in self.tasks:
-                for e in t['examples']:
-                    example_sentences.append(e)
+                example_sentences.extend(iter(t['examples']))
             self.model.cache(example_sentences)
-        
+
         results = self.model.predict([input])[0]
         maxScore, maxIndex = results.max(dim = 0)
-        
+
         maxScore = maxScore.item()
         maxIndex = maxIndex.item()
 

@@ -68,7 +68,7 @@ def main():
                         action='store_true',
                         help="Whether to lowercase input string")
 
-    
+
     # Special params
     parser.add_argument('--train_file_path',
                         type = str,
@@ -87,15 +87,15 @@ def main():
     parser.add_argument("--do_predict",
                         action='store_true',
                         help="do_predict the model")
-    
+
     args = parser.parse_args()
 
     random.seed(args.seed)
 
     nli_train_examples = None if args.do_predict else load_nli_examples(args.train_file_path, args.do_lower_case)
     nli_dev_examples = load_nli_examples(args.dev_file_path, args.do_lower_case)
-    
-    if os.path.exists('{}/pytorch_model.bin'.format(args.model_dir_path)):
+
+    if os.path.exists(f'{args.model_dir_path}/pytorch_model.bin'):
         assert args.do_predict
         nli_model = DNNC(path = args.model_dir_path,
                          args = args)

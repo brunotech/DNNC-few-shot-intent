@@ -24,7 +24,7 @@ def process_single_domain_data():
     train = {}
     dev = {}
     test = {}
-            
+
     for data_type in jsn:
         if 'train' in data_type:
             map = train
@@ -34,28 +34,28 @@ def process_single_domain_data():
             map = test
         else:
             assert False
-            
+
         for data in jsn[data_type]:
             if data[1] not in dmap:
                 continue
-            
+
             domain = dmap[data[1]]
 
             if domain not in map:
                 map[domain] = []
-            
+
             map[domain].append(data)
 
     for map, name in [(train, 'train'), (dev, 'dev'), (test, 'test')]:
 
         for domain in map:
-            if not os.path.exists('./{}'.format(domain)):
-                os.mkdir('./{}'.format(domain))
+            if not os.path.exists(f'./{domain}'):
+                os.mkdir(f'./{domain}')
 
-            if not os.path.exists('./{}/{}'.format(domain, name)):
-                os.mkdir('./{}/{}'.format(domain, name))
+            if not os.path.exists(f'./{domain}/{name}'):
+                os.mkdir(f'./{domain}/{name}')
 
-            with open('./{}/{}/label'.format(domain, name), 'w', encoding='utf-8') as f_label, open('./{}/{}/seq.in'.format(domain, name), 'w', encoding='utf-8') as f_text:
+            with (open(f'./{domain}/{name}/label', 'w', encoding='utf-8') as f_label, open(f'./{domain}/{name}/seq.in', 'w', encoding='utf-8') as f_text):
 
                 for data in map[domain]:
                     f_text.write(data[0])
@@ -71,11 +71,11 @@ def process_full_domain_data():
     train = []
     dev = []
     test = []
-            
+
     for data_type in jsn:
         if 'oos' in data_type:
             continue
-        
+
         if 'train' in data_type:
             list = train
         elif 'val' in data_type:
@@ -84,7 +84,7 @@ def process_full_domain_data():
             list = test
         else:
             assert False
-            
+
         for data in jsn[data_type]:
             list.append(data)
 
@@ -93,10 +93,10 @@ def process_full_domain_data():
         if not os.path.exists('./all'):
             os.mkdir('./all')
 
-        if not os.path.exists('./all/{}'.format(name)):
-            os.mkdir('./all/{}'.format(name))
-            
-        with open('./all/{}/label'.format(name), 'w', encoding='utf-8') as f_label, open('./all/{}/seq.in'.format(name), 'w', encoding='utf-8') as f_text:
+        if not os.path.exists(f'./all/{name}'):
+            os.mkdir(f'./all/{name}')
+
+        with (open(f'./all/{name}/label', 'w', encoding='utf-8') as f_label, open(f'./all/{name}/seq.in', 'w', encoding='utf-8') as f_text):
 
             for data in list:
                 f_text.write(data[0])

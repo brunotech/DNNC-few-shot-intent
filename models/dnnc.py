@@ -38,7 +38,7 @@ class DNNC:
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.bert_model)
 
         if path is not None:
-            state_dict = torch.load(path+'/pytorch_model.bin')
+            state_dict = torch.load(f'{path}/pytorch_model.bin')
             self.model = AutoModelForSequenceClassification.from_pretrained(path, state_dict=state_dict, config=self.config)
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(self.args.bert_model, config=self.config)
@@ -50,11 +50,11 @@ class DNNC:
 
         model_to_save = self.model.module if hasattr(self.model,
                                                      'module') else self.model
-        torch.save(model_to_save.state_dict(), '{}/pytorch_model.bin'.format(dir_path))
+        torch.save(model_to_save.state_dict(), f'{dir_path}/pytorch_model.bin')
 
     def convert_examples_to_features(self, examples, train):
         label_map = {label: i for i, label in enumerate(self.label_list)}
-        is_roberta = True if "roberta" in self.config.architectures[0].lower() else False
+        is_roberta = "roberta" in self.config.architectures[0].lower()
 
         if train:
             label_distribution = torch.FloatTensor(len(label_map)).zero_()
@@ -62,7 +62,7 @@ class DNNC:
             label_distribution = None
 
         features = []
-        for (ex_index, example) in enumerate(examples):
+        for ex_index, example in enumerate(examples):
             tokens_a = self.tokenizer.tokenize(example.text_a)
             tokens_b = self.tokenizer.tokenize(example.text_b)
 
@@ -94,11 +94,7 @@ class DNNC:
             assert len(input_mask) == self.args.max_seq_length
             assert len(segment_ids) == self.args.max_seq_length
 
-            if example.label is None:
-                label_id = -1
-            else:
-                label_id = label_map[example.label]
-
+            label_id = -1 if example.label is None else label_map[example.label]
             if train:
                 label_distribution[label_id] += 1.0
 
@@ -108,11 +104,10 @@ class DNNC:
                               segment_ids=segment_ids,
                               label_id=label_id))
 
-        if train:
-            label_distribution = label_distribution / label_distribution.sum()
-            return features, label_distribution
-        else:
+        if not train:
             return features
+        label_distribution = label_distribution / label_distribution.sum()
+        return features, label_distribution
         
     def train(self, train_examples, dev_examples, file_path = None):
 
@@ -229,7 +224,7 @@ class DNNC:
 
         while start_index < EXAMPLE_NUM:
             end_index = min(start_index+CHUNK, EXAMPLE_NUM)
-            
+
             input_ids_ = input_ids[start_index:end_index, :].to(self.device)
             input_mask_ = input_mask[start_index:end_index, :].to(self.device)
             segment_ids_ = segment_ids[start_index:end_index, :].to(self.device)
@@ -240,14 +235,11 @@ class DNNC:
                 probs_ = torch.softmax(logits, dim=1)
 
             probs_ = probs_.detach().cpu()
-            if probs is None:
-                probs = probs_
-            else:
-                probs = torch.cat((probs, probs_), dim = 0)
+            probs = probs_ if probs is None else torch.cat((probs, probs_), dim = 0)
             labels += [self.label_list[torch.max(probs_[i], dim=0)[1].item()] for i in range(probs_.size(0))]
             start_index = end_index
 
         assert len(labels) == EXAMPLE_NUM
         assert probs.size(0) == EXAMPLE_NUM
-            
+
         return labels, probs

@@ -124,13 +124,13 @@ def main():
     train_file_path = args.train_file_path
     dev_file_path = args.dev_file_path
     train_examples, dev_examples = load_intent_datasets(train_file_path, dev_file_path, args.do_lower_case)
-    sampled_tasks = [sample(N, train_examples) for i in range(T)]
-    
+    sampled_tasks = [sample(N, train_examples) for _ in range(T)]
+
     if args.oos_dev_file_path is not None:
         oos_dev_examples = load_intent_examples(args.oos_dev_file_path, args.do_lower_case)
     else:
         oos_dev_examples = []
-        
+
     label_lists = []
     intent_train_examples = []
     intent_dev_examples = []
@@ -152,25 +152,21 @@ def main():
                 intent_train_examples[-1].append(InputExample(examples[j], None, label))
 
     if args.output_dir is not None:
-        folder_name = '{}/{}-shot-{}/'.format(args.output_dir, N, args.bert_model)
+        folder_name = f'{args.output_dir}/{N}-shot-{args.bert_model}/'
 
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
-        file_name = 'batch_{}---epoch_{}---lr_{}'.format(args.train_batch_size, args.num_train_epochs, args.learning_rate)
-        file_name = '{}__oos-threshold'.format(file_name)
-
-        if args.do_final_test:
-            file_name = file_name + '_TEST.txt'
-        else:
-            file_name = file_name + '.txt'
-
+        file_name = f'batch_{args.train_batch_size}---epoch_{args.num_train_epochs}---lr_{args.learning_rate}'
+        file_name = f'{file_name}__oos-threshold' + (
+            '_TEST.txt' if args.do_final_test else '.txt'
+        )
         f = open(folder_name+file_name, 'w')
     else:
         f = None
 
     for j in range(T):
-        save_model_path = '{}_{}'.format(folder_name + args.save_model_path, j + 1)
+        save_model_path = f'{folder_name + args.save_model_path}_{j + 1}'
         if os.path.exists(save_model_path):
             assert args.do_predict
         else:
@@ -185,7 +181,7 @@ def main():
             model = Classifier(path = None,
                                label_list = label_lists[j],
                                args = args)
-            
+
             model.train(intent_train_examples[j])
 
             if args.save_model_path:
@@ -202,12 +198,12 @@ def main():
         oos_f1 = calc_oos_f1(oos_recall, oos_prec)
 
         print_results(THRESHOLDS, in_acc, oos_recall, oos_prec, oos_f1)
-            
+
         if f is not None:
             for i in range(len(in_acc)):
-                f.write('{},{},{},{} '.format(in_acc[i], oos_recall[i], oos_prec[i], oos_f1[i]))
+                f.write(f'{in_acc[i]},{oos_recall[i]},{oos_prec[i]},{oos_f1[i]} ')
             f.write('\n')
-        
+
     if f is not None:
         f.close()
 

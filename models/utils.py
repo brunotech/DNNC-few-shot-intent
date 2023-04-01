@@ -30,8 +30,7 @@ def get_logger(name):
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO)
-    logger = logging.getLogger(name)
-    return logger
+    return logging.getLogger(name)
         
 def truncate_seq_pair(tokens_a, tokens_b, max_length):
 
@@ -49,11 +48,21 @@ def get_optimizer(model, t_total, args):
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
         {
-            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if all(nd not in n for nd in no_decay)
+            ],
             "weight_decay": 0.01,
         },
-        {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-         "weight_decay": 0.0},
+        {
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if any(nd in n for nd in no_decay)
+            ],
+            "weight_decay": 0.0,
+        },
     ]
 
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
@@ -69,9 +78,9 @@ def get_train_dataloader(train_features, train_batch_size):
     all_label_ids = torch.tensor([f.label_id for f in train_features], dtype=torch.long)
     train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
     train_sampler = RandomSampler(train_data)
-    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=train_batch_size)
-
-    return train_dataloader
+    return DataLoader(
+        train_data, sampler=train_sampler, batch_size=train_batch_size
+    )
 
 def get_eval_dataloader(eval_features, eval_batch_size):
     all_input_ids = torch.tensor([f.input_ids for f in eval_features], dtype=torch.long)
@@ -80,9 +89,7 @@ def get_eval_dataloader(eval_features, eval_batch_size):
     all_label_ids = torch.tensor([f.label_id for f in eval_features], dtype=torch.long)
     eval_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
     eval_sampler = SequentialSampler(eval_data)
-    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=eval_batch_size)
-
-    return eval_dataloader
+    return DataLoader(eval_data, sampler=eval_sampler, batch_size=eval_batch_size)
 
 def process_train_batch(batch, device):
     input_mask = batch[1]
@@ -107,9 +114,7 @@ def loss_with_label_smoothing(label_ids, logits, label_distribution, coeff, devi
 
     # KL-div loss
     prediction = torch.log(torch.softmax(logits, dim=1))
-    loss = F.kl_div(prediction, target_distribution, reduction='mean')
-
-    return loss
+    return F.kl_div(prediction, target_distribution, reduction='mean')
 
 class IntentExample:
     def __init__(self, text, label, do_lower_case):
@@ -123,7 +128,7 @@ class IntentExample:
 def load_intent_examples(file_path, do_lower_case):
     examples = []
 
-    with open('{}/seq.in'.format(file_path), 'r', encoding="utf-8") as f_text, open('{}/label'.format(file_path), 'r', encoding="utf-8") as f_label:
+    with (open(f'{file_path}/seq.in', 'r', encoding="utf-8") as f_text, open(f'{file_path}/label', 'r', encoding="utf-8") as f_label):
         for text, label in zip(f_text, f_label):
             e = IntentExample(text.strip(), label.strip(), do_lower_case)
             examples.append(e)
@@ -148,10 +153,7 @@ def sample(N, examples):
     sampled_examples = []
     for l in labels:
         random.shuffle(labels[l])
-        if l == 'oos':
-            examples = labels[l][:N]
-        else:
-            examples = labels[l][:N]
+        examples = labels[l][:N]
         sampled_examples.append({'task': l, 'examples': examples})
 
     return sampled_examples
@@ -222,17 +224,13 @@ def calc_oos_precision(in_domain_preds, oos_preds, thresholds):
 
     if len(oos_preds) == 0:
         return [0.0] * len(thresholds)
-    
+
     oos_prec = []
 
     for th in thresholds:
-        oos_output_count = 0
         oos_correct = 0
 
-        for pred in in_domain_preds:
-            if pred[0] < th:
-                oos_output_count += 1
-
+        oos_output_count = sum(pred[0] < th for pred in in_domain_preds)
         for pred in oos_preds:
             if pred[0] < th:
                 oos_output_count += 1

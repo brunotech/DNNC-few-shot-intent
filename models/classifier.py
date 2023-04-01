@@ -36,7 +36,7 @@ class Classifier:
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.bert_model)
 
         if path is not None:
-            state_dict = torch.load(path + '/pytorch_model.bin')
+            state_dict = torch.load(f'{path}/pytorch_model.bin')
             self.model = AutoModelForSequenceClassification.from_pretrained(path, state_dict=state_dict, config=self.config)
         else:
             self.model = AutoModelForSequenceClassification.from_pretrained(self.args.bert_model, config=self.config)
@@ -48,19 +48,19 @@ class Classifier:
 
         model_to_save = self.model.module if hasattr(self.model,
                                                      'module') else self.model  # Only save the model it-self
-        torch.save(model_to_save.state_dict(), '{}/pytorch_model.bin'.format(dir_path))
+        torch.save(model_to_save.state_dict(), f'{dir_path}/pytorch_model.bin')
         
     def convert_examples_to_features(self, examples, train):
         label_map = {label: i for i, label in enumerate(self.label_list)}
-        if_roberta = True if "roberta" in self.config.architectures[0].lower() else False
-        
+        if_roberta = "roberta" in self.config.architectures[0].lower()
+
         if train:
             label_distribution = torch.FloatTensor(len(label_map)).zero_()
         else:
             label_distribution = None
 
         features = []
-        for (ex_index, example) in enumerate(examples):
+        for ex_index, example in enumerate(examples):
             tokens_a = self.tokenizer.tokenize(example.text_a)
 
             if len(tokens_a) > self.args.max_seq_length - 2:
@@ -80,25 +80,20 @@ class Classifier:
             assert len(input_mask) == self.args.max_seq_length
             assert len(segment_ids) == self.args.max_seq_length
 
-            if example.label is not None:
-                label_id = label_map[example.label]
-            else:
-                label_id = -1
-
+            label_id = label_map[example.label] if example.label is not None else -1
             if train:
                 label_distribution[label_id] += 1.0
-                
+
             features.append(
                 InputFeatures(input_ids=input_ids,
                               input_mask=input_mask,
                               segment_ids=segment_ids,
                               label_id=label_id))
-            
-        if train:
-            label_distribution = label_distribution / label_distribution.sum()
-            return features, label_distribution
-        else:
+
+        if not train:
             return features
+        label_distribution = label_distribution / label_distribution.sum()
+        return features, label_distribution
         
     def train(self, train_examples):
 

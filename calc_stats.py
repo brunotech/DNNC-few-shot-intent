@@ -16,11 +16,7 @@ from models.utils import THRESHOLDS
 def main():
     file_name = sys.argv[1]
 
-    if len(sys.argv) >= 3:
-        best_index = int(sys.argv[2])
-    else:
-        best_index = None
-        
+    best_index = int(sys.argv[2]) if len(sys.argv) >= 3 else None
     in_acc = []
     oos_recall = []
     oos_prec = []
@@ -47,7 +43,7 @@ def main():
         if best_index is None:
             best_index = (in_acc.mean(dim = 0) + oos_recall.mean(dim = 0)).max(dim = 0)[1]
         print()
-        print('Best threshold: {} (index: {})'.format(THRESHOLDS[best_index], best_index))
+        print(f'Best threshold: {THRESHOLDS[best_index]} (index: {best_index})')
         print('Best in_acc: {} std: {}'.format(in_acc.mean(dim = 0)[best_index], in_acc.std(dim = 0)[best_index]))
         print('Best oos_recall: {} std: {}'.format(oos_recall.mean(dim = 0)[best_index], oos_recall.std(dim = 0)[best_index]))
         print('Best oos_prec: {} std: {}'.format(oos_prec.mean(dim = 0)[best_index], oos_prec.std(dim = 0)[best_index]))

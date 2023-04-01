@@ -16,44 +16,37 @@ labelMap = {'1': ENTAILMENT,
             '-': NON_ENTAILMENT}
 
 def main():
-    # Training data
-    f_out = open('./all_nli.train.txt', 'w')
+    with open('./all_nli.train.txt', 'w') as f_out:
+        for fileName in ['./snli.train.txt', './mnli.train.txt', './wnli.train.txt']:
+            with open(fileName, 'r') as f:
 
-    for fileName in ['./snli.train.txt', './mnli.train.txt', './wnli.train.txt']:
-        with open(fileName, 'r') as f:
+                for line in f:
+                    line = line.rstrip().lower()
+                    fields = line.split('\t')
 
-            for line in f:
-                line = line.rstrip().lower()
-                fields = line.split('\t')
+                    assert len(fields) == 3
 
-                assert len(fields) == 3
+                    if fields[2] not in labelMap:
+                        print(fileName, line)
+                        continue
 
-                if fields[2] not in labelMap:
-                    print(fileName, line)
-                    continue
+                    f_out.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')
+    with open('./all_nli.dev.txt', 'w') as f_out:
+        for fileName in ['./snli.dev.txt', './mnli.dev.txt', './wnli.dev.txt']:
+            with (open(fileName, 'r') as f, open(f'{fileName}_processed.txt', 'w') as f_sep):
 
-                f_out.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')
-    f_out.close()
+                for line in f:
+                    line = line.rstrip().lower()
+                    fields = line.split('\t')
 
-    # Dev data
-    f_out = open('./all_nli.dev.txt', 'w')
+                    assert len(fields) == 3
 
-    for fileName in ['./snli.dev.txt', './mnli.dev.txt', './wnli.dev.txt']:
-        with open(fileName, 'r') as f, open('{}_processed.txt'.format(fileName), 'w') as f_sep:
+                    if fields[2] not in labelMap:
+                        print(fileName, line)
+                        continue
 
-            for line in f:
-                line = line.rstrip().lower()
-                fields = line.split('\t')
-
-                assert len(fields) == 3
-
-                if fields[2] not in labelMap:
-                    print(fileName, line)
-                    continue
-
-                f_out.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')
-                f_sep.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')            
-    f_out.close()
+                    f_out.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')
+                    f_sep.write(fields[0]+'\t'+fields[1]+'\t'+labelMap[fields[2]]+'\n')
 
 if __name__ == '__main__':
     main()
